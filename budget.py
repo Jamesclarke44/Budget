@@ -17,7 +17,7 @@ total_income = income + extra_income
 # -------------------------
 st.subheader("Monthly Bills")
 
-mortgage = st.number_input("Mortgage", value=3260)
+mortgage = st.number_input("Mortgage", value=3018)
 insurance = st.number_input("Insurance", value=650)
 telus = st.number_input("Telus", value=150)
 enmax = st.number_input("ENMAX", value=250)
