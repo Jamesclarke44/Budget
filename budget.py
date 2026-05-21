@@ -2,12 +2,12 @@ import streamlit as st
 import json
 import os
 
-st.set_page_config(page_title="Smart Auto Budget", layout="centered")
+st.set_page_config(page_title="Manual Budget Control", layout="centered")
 
-st.title("🧠 Auto Budget & Debt Engine")
+st.title("📊 Manual Budget & Debt Control")
 
 # =========================
-# DATA STORAGE
+# DATA (DEBT BALANCES)
 # =========================
 DATA_FILE = "budget_data.json"
 
@@ -25,8 +25,12 @@ def load_data():
 
 data = load_data()
 
+rbc = data["rbc"]
+pc = data["pc"]
+loc = data["loc"]
+
 # =========================
-# INPUTS (MANUAL ONLY)
+# INPUTS (ALL MANUAL)
 # =========================
 st.subheader("Income")
 
@@ -53,81 +57,54 @@ total_bills = (
     food
 )
 
-# =========================
-# DEBT BALANCES
-# =========================
-rbc = data["rbc"]
-pc = data["pc"]
-loc = data["loc"]
+st.subheader("Savings & Debt Payments")
 
-st.subheader("Debt Balances")
+savings = st.number_input("Savings Contribution", min_value=0, value=100)
 
-st.write(f"RBC Mastercard: ${rbc}")
-st.write(f"PC Mastercard: ${pc}")
-st.write(f"Line of Credit: ${loc}")
+rbc_payment = st.number_input("RBC Mastercard Payment", min_value=0, value=400)
+pc_payment = st.number_input("PC Mastercard Payment", min_value=0, value=100)
+loc_payment = st.number_input("LOC Payment", min_value=0, value=100)
 
 # =========================
-# CORE CALCULATION ENGINE
+# CALCULATIONS
 # =========================
 available = total_income - total_bills
 
-# -------------------------
-# RULES (AUTO ALLOCATION)
-# -------------------------
+total_allocations = savings + rbc_payment + pc_payment + loc_payment
 
-# 1. Emergency buffer rule
-savings_target = 100
-
-# 2. Remaining after savings
-after_savings = available - savings_target
-
-if after_savings < 0:
-    savings_target = max(0, available * 0.1)
-    after_savings = available - savings_target
-
-# 3. Debt priority weights
-# RBC = highest priority
-rbc_weight = 0.6
-pc_weight = 0.3
-loc_weight = 0.1
-
-rbc_payment = after_savings * rbc_weight
-pc_payment = after_savings * pc_weight
-loc_payment = after_savings * loc_weight
+remaining = available - total_allocations
 
 # =========================
-# RECOMMENDED PLAN OUTPUT
+# OUTPUT DASHBOARD
 # =========================
-st.subheader("📊 Recommended Auto Plan")
+st.subheader("📊 Summary")
 
 st.write(f"Income: ${total_income}")
 st.write(f"Bills: ${total_bills}")
 st.write(f"Available After Bills: ${available}")
 
-st.markdown("### 💰 Auto Allocation")
+st.markdown("### 💰 Your Inputs")
 
-st.write(f"✔ Savings: ${savings_target:.2f}")
-st.write(f"🔥 RBC Payment: ${rbc_payment:.2f}")
-st.write(f"💳 PC Payment: ${pc_payment:.2f}")
-st.write(f"🏦 LOC Payment: ${loc_payment:.2f}")
-
-remaining = available - (savings_target + rbc_payment + pc_payment + loc_payment)
+st.write(f"Savings: ${savings}")
+st.write(f"RBC Payment: ${rbc_payment}")
+st.write(f"PC Payment: ${pc_payment}")
+st.write(f"LOC Payment: ${loc_payment}")
 
 st.metric("Leftover Cash", f"${remaining:.2f}")
 
 # =========================
-# DEBT PROJECTION (SIMPLE)
+# DEBT IMPACT (SIMPLE FORECAST)
 # =========================
-st.subheader("🔮 Payoff Estimate")
+st.subheader("🔮 Debt Impact (Forecast)")
 
 def months(balance, payment):
     if payment <= 0:
         return float("inf")
-    return balance / (payment * 2)  # bi-weekly assumption
+    return balance / (payment * 2)  # bi-weekly estimate
 
-st.write(f"RBC: ~{months(rbc, rbc_payment):.1f} months")
-st.write(f"PC: ~{months(pc, pc_payment):.1f} months")
-st.write(f"LOC: ~{months(loc, loc_payment):.1f} months")
+st.write("RBC Mastercard:", f"~{months(rbc, rbc_payment):.1f} months")
+st.write("PC Mastercard:", f"~{months(pc, pc_payment):.1f} months")
+st.write("Line of Credit:", f"~{months(loc, loc_payment):.1f} months")
 
 # =========================
 # WARNING SYSTEM
@@ -135,8 +112,10 @@ st.write(f"LOC: ~{months(loc, loc_payment):.1f} months")
 st.divider()
 
 if remaining < 0:
-    st.error("Over-allocated budget — reduce spending or debt targets")
+    st.error("Over budget — you're allocating more than you have available.")
 elif remaining < 300:
-    st.warning("Tight budget")
+    st.warning("Tight budget — low buffer remaining.")
 else:
-    st.success("Healthy cash flow")
+    st.success("Budget is balanced.")
+
+st.caption("Manual control mode: you decide all allocations.")
