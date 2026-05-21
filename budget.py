@@ -59,7 +59,7 @@ total_income = income + extra
 st.subheader("Bills")
 
 mortgage = st.number_input("Mortgage", value=3018)
-insurance = st.number_input("Insurance", value=650)
+insurance = st.number_input("Insurance", value=574)
 telus = st.number_input("Telus", value=150)
 enmax = st.number_input("ENMAX", value=250)
 fuel = st.number_input("Fuel", value=200)
