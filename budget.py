@@ -1,10 +1,11 @@
 import streamlit as st
 import json
 import os
+import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="Budget + Debt Timeline", layout="centered")
+st.set_page_config(page_title="Budget + Debt Graph", layout="centered")
 
-st.title("📊 Budget + Debt Timeline + Interest")
+st.title("📊 Budget + Debt Timeline + Graph")
 
 # =========================
 # LOAD DATA
@@ -26,7 +27,7 @@ def load_data():
 data = load_data()
 
 # =========================
-# CURRENT DEBTS
+# DEBTS
 # =========================
 rbc = data["rbc"]
 pc = data["pc"]
@@ -60,59 +61,63 @@ total_bills = (
     food
 )
 
-st.subheader("Debt Payments (Manual)")
-
-savings = st.number_input("Savings", min_value=0, value=100)
+st.subheader("Debt Payments")
 
 rbc_payment = st.number_input("RBC Payment", min_value=0, value=400)
 pc_payment = st.number_input("PC Payment", min_value=0, value=100)
 loc_payment = st.number_input("LOC Payment", min_value=0, value=100)
 
 # =========================
-# INTEREST RATES (IMPORTANT ADDITION)
-# =========================
-st.subheader("Interest Rates (%)")
-
-rbc_rate = st.number_input("RBC Mastercard Interest %", min_value=0.0, value=19.99)
-pc_rate = st.number_input("PC Mastercard Interest %", min_value=0.0, value=19.99)
-loc_rate = st.number_input("LOC Interest %", min_value=0.0, value=9.5)
-
-# =========================
 # CASH FLOW
 # =========================
 available = total_income - total_bills
-allocated = savings + rbc_payment + pc_payment + loc_payment
+
+allocated = rbc_payment + pc_payment + loc_payment
 remaining = available - allocated
 
 # =========================
-# INTEREST CALCULATION (MONTHLY)
+# SIMULATION ENGINE (GRAPH)
 # =========================
-rbc_interest = rbc * (rbc_rate / 100) / 12
-pc_interest = pc * (pc_rate / 100) / 12
-loc_interest = loc * (loc_rate / 100) / 12
+st.subheader("📉 Debt Payoff Graph (Projection)")
 
-total_interest = rbc_interest + pc_interest + loc_interest
+months = 60  # simulate 5 years
+
+def simulate_debt(balance, payment):
+    values = []
+    current = balance
+    for _ in range(months):
+        current -= payment
+        if current < 0:
+            current = 0
+        values.append(current)
+    return values
+
+rbc_curve = simulate_debt(rbc, rbc_payment)
+pc_curve = simulate_debt(pc, pc_payment)
+loc_curve = simulate_debt(loc, loc_payment)
+
+fig, ax = plt.subplots()
+
+ax.plot(rbc_curve, label="RBC Mastercard")
+ax.plot(pc_curve, label="PC Mastercard")
+ax.plot(loc_curve, label="Line of Credit")
+
+ax.set_title("Debt Payoff Projection")
+ax.set_xlabel("Months")
+ax.set_ylabel("Remaining Balance ($)")
+ax.legend()
+
+st.pyplot(fig)
 
 # =========================
-# TIMELINE FUNCTION
+# SUMMARY
 # =========================
-def months_to_payoff(balance, payment):
-    if payment <= 0:
-        return float("inf")
-    return balance / payment
-
-# =========================
-# OUTPUT
-# =========================
-st.subheader("📊 Financial Summary")
+st.subheader("📊 Summary")
 
 st.write(f"Income: ${total_income}")
 st.write(f"Bills: ${total_bills}")
 st.write(f"Available After Bills: ${available}")
 
-st.markdown("### 💰 Your Plan")
-
-st.write(f"Savings: ${savings}")
 st.write(f"RBC Payment: ${rbc_payment}")
 st.write(f"PC Payment: ${pc_payment}")
 st.write(f"LOC Payment: ${loc_payment}")
@@ -120,46 +125,15 @@ st.write(f"LOC Payment: ${loc_payment}")
 st.metric("Leftover Cash", f"${remaining:.2f}")
 
 # =========================
-# INTEREST SECTION
-# =========================
-st.subheader("💸 Monthly Interest Cost")
-
-st.write(f"RBC Interest: ${rbc_interest:.2f}/month")
-st.write(f"PC Interest: ${pc_interest:.2f}/month")
-st.write(f"LOC Interest: ${loc_interest:.2f}/month")
-
-st.metric("Total Interest Burn", f"${total_interest:.2f}/month")
-
-# =========================
-# DEBT TIMELINE
-# =========================
-st.subheader("🔮 Debt Payoff Timeline")
-
-rbc_months = months_to_payoff(rbc, rbc_payment)
-pc_months = months_to_payoff(pc, pc_payment)
-loc_months = months_to_payoff(loc, loc_payment)
-
-st.write(f"RBC Mastercard: ~{rbc_months:.1f} months")
-st.write(f"PC Mastercard: ~{pc_months:.1f} months")
-st.write(f"Line of Credit: ~{loc_months:.1f} months")
-
-total_debt = rbc + pc + loc
-total_payment = rbc_payment + pc_payment + loc_payment
-
-overall = total_debt / max(total_payment, 1)
-
-st.metric("🏁 Full Debt Freedom", f"{overall:.1f} months")
-
-# =========================
 # WARNING SYSTEM
 # =========================
 st.divider()
 
 if remaining < 0:
-    st.error("Over budget — you're allocating more than you earn.")
+    st.error("Over budget")
 elif remaining < 300:
-    st.warning("Tight budget — low buffer.")
+    st.warning("Tight budget")
 else:
-    st.success("Budget is stable")
+    st.success("Stable cash flow")
 
-st.caption("Includes interest burn + payoff timeline projection")
+st.caption("Graph shows linear payoff projection based on your inputs")
