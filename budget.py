@@ -2,12 +2,12 @@ import streamlit as st
 import json
 import os
 
-st.set_page_config(page_title="Smart Budget System", layout="centered")
+st.set_page_config(page_title="Predictive Budget System", layout="centered")
 
-st.title("🧠 Smart Budget & Debt Engine")
+st.title("🔮 Predictive Budget & Debt System")
 
 # =========================
-# DATA STORAGE
+# LOAD DATA
 # =========================
 DATA_FILE = "budget_data.json"
 
@@ -23,26 +23,7 @@ def load_data():
         "loc": 15463
     }
 
-def save_data(data):
-    with open(DATA_FILE, "w") as f:
-        json.dump(data, f)
-
 data = load_data()
-
-# =========================
-# SESSION STATE
-# =========================
-if "savings" not in st.session_state:
-    st.session_state.savings = data["savings"]
-
-if "rbc" not in st.session_state:
-    st.session_state.rbc = data["rbc"]
-
-if "pc" not in st.session_state:
-    st.session_state.pc = data["pc"]
-
-if "loc" not in st.session_state:
-    st.session_state.loc = data["loc"]
 
 # =========================
 # INCOME
@@ -75,111 +56,81 @@ total_bills = (
     food
 )
 
-# =========================
-# DEBT PAYMENTS
-# =========================
-st.subheader("Debt Payments")
-
-rbc_payment = st.slider("RBC Mastercard", 0, 1000, 400)
-pc_payment = st.slider("PC Mastercard", 0, 500, 100)
-loc_payment = st.slider("Line of Credit", 0, 500, 100)
+available = total_income - total_bills
 
 # =========================
-# SAVINGS
+# PAYMENT STRATEGY
 # =========================
-buffer = st.number_input("Savings Contribution", value=100)
+st.subheader("Debt Strategy")
+
+rbc_payment = st.slider("RBC Payment", 0, 1000, 400)
+pc_payment = st.slider("PC Payment", 0, 500, 100)
+loc_payment = st.slider("LOC Payment", 0, 500, 100)
 
 # =========================
-# SMART ENGINE
+# CURRENT DEBT
 # =========================
+rbc = data["rbc"]
+pc = data["pc"]
+loc = data["loc"]
+
+# =========================
+# FORECAST ENGINE
+# =========================
+st.subheader("🔮 Debt Forecast")
+
+def payoff_months(balance, payment):
+    if payment <= 0:
+        return float("inf")
+    return balance / payment
+
+rbc_months = payoff_months(rbc, rbc_payment)
+pc_months = payoff_months(pc, pc_payment)
+loc_months = payoff_months(loc, loc_payment)
+
+st.write(f"RBC Mastercard: ~{rbc_months:.1f} months")
+st.write(f"PC Mastercard: ~{pc_months:.1f} months")
+st.write(f"Line of Credit: ~{loc_months:.1f} months")
+
+# =========================
+# OVERALL TIMELINE
+# =========================
+total_debt = rbc + pc + loc
+total_payment = rbc_payment + pc_payment + loc_payment
+
+overall_months = total_debt / max(total_payment, 1)
+
+st.metric("🏁 Estimated Debt-Free Timeline", f"{overall_months:.1f} months")
+
+# =========================
+# WHAT-IF SIMULATOR
+# =========================
+st.subheader("⚡ What-If Simulator")
+
+extra_payment = st.slider("Extra Monthly Payment", 0, 1000, 200)
+
+faster_months = total_debt / max(total_payment + extra_payment, 1)
+
+st.success(f"With extra payments: ~{faster_months:.1f} months")
+
+# =========================
+# CASH FLOW
+# =========================
+st.divider()
+
 remaining = (
     total_income
     - total_bills
-    - buffer
     - rbc_payment
     - pc_payment
     - loc_payment
 )
 
-# Auto-adjust if negative
-if remaining < 0:
-    st.warning("Budget negative. Reduce debt payments or spending.")
-
-# =========================
-# PAYDAY BUTTON
-# =========================
-if st.button("⚡ Run Smart Payday"):
-
-    st.session_state.savings += buffer
-
-    st.session_state.rbc -= rbc_payment
-    st.session_state.pc -= pc_payment
-    st.session_state.loc -= loc_payment
-
-    # Prevent negative debt
-    st.session_state.rbc = max(st.session_state.rbc, 0)
-    st.session_state.pc = max(st.session_state.pc, 0)
-    st.session_state.loc = max(st.session_state.loc, 0)
-
-    save_data({
-        "savings": st.session_state.savings,
-        "rbc": st.session_state.rbc,
-        "pc": st.session_state.pc,
-        "loc": st.session_state.loc
-    })
-
-    st.success("Smart payday executed")
-
-# =========================
-# DASHBOARD
-# =========================
-st.divider()
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.metric("💰 Income", f"${total_income}")
-
-with col2:
-    st.metric("💸 Bills", f"${total_bills}")
-
-with col3:
-    st.metric("🔥 Safe to Spend", f"${remaining}")
-
-# =========================
-# DEBT TRACKER
-# =========================
-st.subheader("Debt Tracker")
-
-st.write("### RBC Mastercard")
-st.progress(min(st.session_state.rbc / 10000, 1.0))
-st.write(f"${st.session_state.rbc}")
-
-st.write("### PC Mastercard")
-st.progress(min(st.session_state.pc / 10000, 1.0))
-st.write(f"${st.session_state.pc}")
-
-st.write("### Line of Credit")
-st.progress(min(st.session_state.loc / 20000, 1.0))
-st.write(f"${st.session_state.loc}")
-
-# =========================
-# SAVINGS
-# =========================
-st.subheader("Savings")
-
-st.metric("Emergency Buffer", f"${st.session_state.savings}")
-
-# =========================
-# STATUS
-# =========================
-st.divider()
+st.metric("💰 Available After Payments", f"${remaining}")
 
 if remaining < 0:
     st.error("Over budget")
 elif remaining < 300:
-    st.warning("Tight budget")
+    st.warning("Tight month")
 else:
-    st.success("Budget stable")
-
-st.caption("Priority: RBC Mastercard → PC Mastercard → LOC")
+    st.success("Stable cash flow")
