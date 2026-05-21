@@ -7,7 +7,7 @@ st.title("Simple Budget & Debt Tracker")
 # -------------------------
 st.subheader("Income")
 
-income = st.number_input("Paycheque Income", value=2600)
+income = st.number_input("Paycheque Income", value=5200)
 extra_income = st.number_input("Overtime / Extra Income", value=0)
 
 total_income = income + extra_income
