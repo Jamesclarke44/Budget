@@ -2,12 +2,12 @@ import streamlit as st
 import json
 import os
 
-st.set_page_config(page_title="Manual Budget Control", layout="centered")
+st.set_page_config(page_title="Budget + Debt Timeline", layout="centered")
 
-st.title("📊 Manual Budget & Debt Control")
+st.title("📊 Budget + Debt Timeline + Interest")
 
 # =========================
-# DATA (DEBT BALANCES)
+# LOAD DATA
 # =========================
 DATA_FILE = "budget_data.json"
 
@@ -25,12 +25,15 @@ def load_data():
 
 data = load_data()
 
+# =========================
+# CURRENT DEBTS
+# =========================
 rbc = data["rbc"]
 pc = data["pc"]
 loc = data["loc"]
 
 # =========================
-# INPUTS (ALL MANUAL)
+# INPUTS
 # =========================
 st.subheader("Income")
 
@@ -57,33 +60,57 @@ total_bills = (
     food
 )
 
-st.subheader("Savings & Debt Payments")
+st.subheader("Debt Payments (Manual)")
 
-savings = st.number_input("Savings Contribution", min_value=0, value=100)
+savings = st.number_input("Savings", min_value=0, value=100)
 
-rbc_payment = st.number_input("RBC Mastercard Payment", min_value=0, value=400)
-pc_payment = st.number_input("PC Mastercard Payment", min_value=0, value=100)
+rbc_payment = st.number_input("RBC Payment", min_value=0, value=400)
+pc_payment = st.number_input("PC Payment", min_value=0, value=100)
 loc_payment = st.number_input("LOC Payment", min_value=0, value=100)
 
 # =========================
-# CALCULATIONS
+# INTEREST RATES (IMPORTANT ADDITION)
+# =========================
+st.subheader("Interest Rates (%)")
+
+rbc_rate = st.number_input("RBC Mastercard Interest %", min_value=0.0, value=19.99)
+pc_rate = st.number_input("PC Mastercard Interest %", min_value=0.0, value=19.99)
+loc_rate = st.number_input("LOC Interest %", min_value=0.0, value=9.5)
+
+# =========================
+# CASH FLOW
 # =========================
 available = total_income - total_bills
-
-total_allocations = savings + rbc_payment + pc_payment + loc_payment
-
-remaining = available - total_allocations
+allocated = savings + rbc_payment + pc_payment + loc_payment
+remaining = available - allocated
 
 # =========================
-# OUTPUT DASHBOARD
+# INTEREST CALCULATION (MONTHLY)
 # =========================
-st.subheader("📊 Summary")
+rbc_interest = rbc * (rbc_rate / 100) / 12
+pc_interest = pc * (pc_rate / 100) / 12
+loc_interest = loc * (loc_rate / 100) / 12
+
+total_interest = rbc_interest + pc_interest + loc_interest
+
+# =========================
+# TIMELINE FUNCTION
+# =========================
+def months_to_payoff(balance, payment):
+    if payment <= 0:
+        return float("inf")
+    return balance / payment
+
+# =========================
+# OUTPUT
+# =========================
+st.subheader("📊 Financial Summary")
 
 st.write(f"Income: ${total_income}")
 st.write(f"Bills: ${total_bills}")
 st.write(f"Available After Bills: ${available}")
 
-st.markdown("### 💰 Your Inputs")
+st.markdown("### 💰 Your Plan")
 
 st.write(f"Savings: ${savings}")
 st.write(f"RBC Payment: ${rbc_payment}")
@@ -93,18 +120,35 @@ st.write(f"LOC Payment: ${loc_payment}")
 st.metric("Leftover Cash", f"${remaining:.2f}")
 
 # =========================
-# DEBT IMPACT (SIMPLE FORECAST)
+# INTEREST SECTION
 # =========================
-st.subheader("🔮 Debt Impact (Forecast)")
+st.subheader("💸 Monthly Interest Cost")
 
-def months(balance, payment):
-    if payment <= 0:
-        return float("inf")
-    return balance / (payment * 2)  # bi-weekly estimate
+st.write(f"RBC Interest: ${rbc_interest:.2f}/month")
+st.write(f"PC Interest: ${pc_interest:.2f}/month")
+st.write(f"LOC Interest: ${loc_interest:.2f}/month")
 
-st.write("RBC Mastercard:", f"~{months(rbc, rbc_payment):.1f} months")
-st.write("PC Mastercard:", f"~{months(pc, pc_payment):.1f} months")
-st.write("Line of Credit:", f"~{months(loc, loc_payment):.1f} months")
+st.metric("Total Interest Burn", f"${total_interest:.2f}/month")
+
+# =========================
+# DEBT TIMELINE
+# =========================
+st.subheader("🔮 Debt Payoff Timeline")
+
+rbc_months = months_to_payoff(rbc, rbc_payment)
+pc_months = months_to_payoff(pc, pc_payment)
+loc_months = months_to_payoff(loc, loc_payment)
+
+st.write(f"RBC Mastercard: ~{rbc_months:.1f} months")
+st.write(f"PC Mastercard: ~{pc_months:.1f} months")
+st.write(f"Line of Credit: ~{loc_months:.1f} months")
+
+total_debt = rbc + pc + loc
+total_payment = rbc_payment + pc_payment + loc_payment
+
+overall = total_debt / max(total_payment, 1)
+
+st.metric("🏁 Full Debt Freedom", f"{overall:.1f} months")
 
 # =========================
 # WARNING SYSTEM
@@ -112,10 +156,10 @@ st.write("Line of Credit:", f"~{months(loc, loc_payment):.1f} months")
 st.divider()
 
 if remaining < 0:
-    st.error("Over budget — you're allocating more than you have available.")
+    st.error("Over budget — you're allocating more than you earn.")
 elif remaining < 300:
-    st.warning("Tight budget — low buffer remaining.")
+    st.warning("Tight budget — low buffer.")
 else:
-    st.success("Budget is balanced.")
+    st.success("Budget is stable")
 
-st.caption("Manual control mode: you decide all allocations.")
+st.caption("Includes interest burn + payoff timeline projection")
