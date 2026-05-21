@@ -48,7 +48,7 @@ if "loc" not in st.session_state:
 # =========================
 st.subheader("Income")
 
-income = st.number_input("Paycheque", value=2600)
+income = st.number_input("Paycheque", value=5296)
 extra = st.number_input("Overtime", value=0)
 
 total_income = income + extra
