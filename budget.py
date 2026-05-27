@@ -66,7 +66,7 @@ total_bills = (
 
 st.subheader("Debt Payments")
 
-rbc_payment = st.number_input("RBC Payment", min_value=0, value=400)
+rbc_payment = st.number_input("RBC Payment", min_value=0, value=200)
 pc_payment = st.number_input("PC Payment", min_value=0, value=100)
 loc_payment = st.number_input("LOC Payment", min_value=0, value=100)
 
