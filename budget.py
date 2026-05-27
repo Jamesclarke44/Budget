@@ -51,6 +51,9 @@ telus = st.number_input("Telus", min_value=0, value=150)
 enmax = st.number_input("ENMAX", min_value=0, value=250)
 fuel = st.number_input("Fuel", min_value=0, value=200)
 food = st.number_input("Food", min_value=0, value=400)
+cell_phone = st.number_input("Cell Phone", min_value=0, value=50)
+
+social_spending = st.number_input("Social Spending", min_value=0, value=50)
 
 total_bills = (
     mortgage +
